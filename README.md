@@ -3,6 +3,7 @@
 3DMaze is a maze game in console with raycasting. 
 I recommend to play it in a fullscreen console.
 Move with WASD keys.
+This game works on Linux. Should work on Windows but I wasn't able to try it so I recommend playing it on Linux.
 
 At the start of the game there is a main menu where the player can select either start, help or exit option.
 By selecting the **help** option help menu appears and shows the player what keys he is supposed to use.
