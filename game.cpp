@@ -50,7 +50,7 @@ Game::Game(int x,int y) {
     player.dirX = 1; 
     player.dirY = 0; //initial direction vector
     player.planeX = 0; 
-    player.planeY = -0.66; //fov is 66 degrees
+    player.planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
 
     fc = FrameCounter();
 }
@@ -177,8 +177,7 @@ void Game::RayCast() {
             sideDistY = (mapY + 1.0 - player.posY) * deltaDistY;
         }
         
-        while(hit == 0)
-        {
+        while(hit == 0) {
             //jump to next map square, either in x-direction, or in y-direction
             if(sideDistX < sideDistY) {
                 sideDistX += deltaDistX;
