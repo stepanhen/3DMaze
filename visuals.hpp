@@ -17,10 +17,25 @@ class InfoHandler {
 class MainMenu {
     public:
         MainMenu();
-        void StartButton(int x, int y);
-        void HelpButton(int x, int y);
-        void ExitButton(int x, int y);
-        void BackButton(int x, int y);
+        MainMenu(int w, int h);
+        int selected;
+        int screenWidth;
+        int screenHeight;
+        void PrintMenu();
+        void StartButton();
+        void HelpButton();
+        void ExitButton();
+        void Down();
+        void Up();
+};
+
+class HelpMenu {
+    public:
+        HelpMenu();
+        HelpMenu(int w, int h);
+        int screenWidth;
+        int screenHeight;
+        void PrintMenu();
 };
 
 #endif

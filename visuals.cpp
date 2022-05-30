@@ -44,37 +44,115 @@ void InfoHandler::UnlockedDoorMsg() {
     mvaddstr(msgStartY + 4, msgStartX, "                                                                                ");
 }
 
-MainMenu::MainMenu() {
-
+MainMenu::MainMenu() {}
+MainMenu::MainMenu(int w, int h) {
+    screenWidth = w;
+    screenHeight = h;
+    selected = 0;
 }
-void MainMenu::StartButton(int x, int y) {
-    mvaddstr(y, x, " ______   ______  ______   ______  ______");
-    mvaddstr(y + 1, x, "/\\  ___\\ /\\__  _\\/\\  __ \\ /\\  == \\/\\__  _\\"); 
-    mvaddstr(y + 2, x, "\\ \\___  \\\\/_/\\ \\/\\ \\  __ \\ \\  __<\\/_/\\ \\/");
-    mvaddstr(y + 3, x, " \\/\\_____\\  \\ \\_\\ \\ \\_\\ \\_\\ \\_\\ \\_\\ \\ \\_\\");
-    mvaddstr(y + 4, x, "  \\/_____/   \\/_/  \\/_/\\/_/ \\/_/ /_/  \\/_/");
-}
+void MainMenu::StartButton() {
+    int msgWidth = 42;
+    if(selected == 0) msgWidth -= 20;
+    int msgStartX = screenWidth / 2 - msgWidth / 2;
+    int msgStartY = (screenHeight - 15) / 4;
 
-void MainMenu::HelpButton(int x, int y) {
-    mvaddstr(y, x, " __  __   ______   __       ______");
-    mvaddstr(y + 1, x, "/\\ \\_\\ \\ /\\  ___\\ /\\ \\     /\\  == \\");
-    mvaddstr(y + 2, x, "\\ \\  __ \\\\ \\  __\\ \\ \\ \\____\\ \\  _-/");
-    mvaddstr(y + 3, x, " \\ \\_\\ \\_\\\\ \\_____\\\\ \\_____\\\\ \\_\\");
-    mvaddstr(y + 4, x, "  \\/_/\\/_/ \\/_____/ \\/_____/ \\/_/");
-}
-
-void MainMenu::ExitButton(int x, int y) {
-    mvaddstr(y, x, " ______  __  __   __   ______");
-    mvaddstr(y + 1, x, "/\\  ___\\/\\_\\_\\_\\ /\\ \\ /\\__  _\\");
-    mvaddstr(y + 2, x, "\\ \\  __\\\\/_/\\_\\/_\\ \\ \\\\/_/\\ \\/");
-    mvaddstr(y + 3, x, " \\ \\_____\\/\\_\\/\\_\\\\ \\_\\  \\ \\_\\");
-    mvaddstr(y + 4, x, "  \\/_____/\\/_/\\/_/ \\/_/   \\/_/");
+    mvaddstr(msgStartY    , msgStartX, " ______   ______  ______   ______  ______ "); 
+    mvaddstr(msgStartY + 1, msgStartX, "/\\  ___\\ /\\__  _\\/\\  __ \\ /\\  == \\/\\__  _\\"); 
+    mvaddstr(msgStartY + 2, msgStartX, "\\ \\___  \\\\/_/\\ \\/\\ \\  __ \\\\ \\  __<\\/_/\\ \\/"); 
+    mvaddstr(msgStartY + 3, msgStartX, " \\/\\_____\\  \\ \\_\\ \\ \\_\\ \\_\\\\ \\_\\ \\_\\ \\ \\_\\"); 
+    mvaddstr(msgStartY + 4, msgStartX, "  \\/_____/   \\/_/  \\/_/\\/_/ \\/_/ /_/  \\/_/"); 
 }
 
-void MainMenu::BackButton(int x, int y) {
-    mvaddstr(y, x, " ______  ______  ______  __  __");
-    mvaddstr(y + 1, x, "/\\  == \\/\\  __ \\/\\  ___\\/\\ \\/ /");
-    mvaddstr(y + 2 , x, "\\ \\  __<\\ \\  __ \\ \\ \\___\\ \\  _'-."); 
-    mvaddstr(y + 3, x, " \\ \\_____\\ \\_\\ \\_\\ \\_____\\ \\_\\ \\_\\");
-    mvaddstr(y + 4, x, "  \\/_____/\\/_/\\/_/\\/_____/\\/_/\\/_/");
+void MainMenu::HelpButton() {
+    int msgWidth = 35;
+    if(selected == 1) msgWidth -= 20;
+    int msgStartX = screenWidth / 2 - msgWidth / 2;
+    int msgStartY = 2*((screenHeight - 15) / 4) + 5;
+
+    mvaddstr(msgStartY,     msgStartX, " __  __   ______   __       ______");
+    mvaddstr(msgStartY + 1, msgStartX, "/\\ \\_\\ \\ /\\  ___\\ /\\ \\     /\\  == \\");
+    mvaddstr(msgStartY + 2, msgStartX, "\\ \\  __ \\\\ \\  __\\ \\ \\ \\____\\ \\  __/");
+    mvaddstr(msgStartY + 3, msgStartX, " \\ \\_\\ \\_\\\\ \\_____\\\\ \\_____\\\\ \\_\\");
+    mvaddstr(msgStartY + 4, msgStartX, "  \\/_/\\/_/ \\/_____/ \\/_____/ \\/_/");
+}
+
+void MainMenu::ExitButton() {
+    int msgWidth = 30;
+    if(selected == 2) msgWidth -= 20;
+    int msgStartX = screenWidth / 2 - msgWidth / 2;
+    int msgStartY = 3*((screenHeight - 15) / 4) + 10;
+
+    mvaddstr(msgStartY,     msgStartX, " ______  __  __   __   ______");
+    mvaddstr(msgStartY + 1, msgStartX, "/\\  ___\\/\\_\\_\\_\\ /\\ \\ /\\__  _\\");
+    mvaddstr(msgStartY + 2, msgStartX, "\\ \\  __\\\\/_/\\_\\/_\\ \\ \\\\/_/\\ \\/");
+    mvaddstr(msgStartY + 3, msgStartX, " \\ \\_____\\/\\_\\/\\_\\\\ \\_\\  \\ \\_\\");
+    mvaddstr(msgStartY + 4, msgStartX, "  \\/_____/\\/_/\\/_/ \\/_/   \\/_/");
+}
+
+void MainMenu::Down() {
+    selected++;
+    if (selected > 2) selected = 0;
+}
+
+void MainMenu::Up() {
+    selected--;
+    if (selected < 0) selected = 2;
+}
+
+void MainMenu::PrintMenu() {
+    clear();
+    StartButton();
+    HelpButton();
+    ExitButton();
+    refresh();
+}
+
+HelpMenu::HelpMenu() {}
+HelpMenu::HelpMenu(int w, int h) {
+    screenWidth = w;
+    screenHeight = h;
+}
+
+void HelpMenu::PrintMenu() {
+    int msgWidth = 129;
+    int msgStartY = screenHeight / 2 - 34 / 2;
+    int msgStartX = screenWidth / 2 - msgWidth / 2;
+    int i = 1;
+
+    mvaddstr(msgStartY, msgStartX, " __  __                                 ______                                     _      __          __                         ");       
+    mvaddstr(msgStartY + i++, msgStartX, "|  \\/  |                   _           |  ____|                                   | |  _  \\ \\        / /                         ");       
+    mvaddstr(msgStartY + i++, msgStartX, "| \\  / |  ___ __   __ ___ (_)          | |__  ___   _ __ __      __ __ _  _ __  __| | (_)  \\ \\  /\\  / /                          ");       
+    mvaddstr(msgStartY + i++, msgStartX, "| |\\/| | / _ \\\\ \\ / // _ \\             |  __|/ _ \\ | '__|\\ \\ /\\ / // _` || '__|/ _` |       \\ \\/  \\/ /                           ");       
+    mvaddstr(msgStartY + i++, msgStartX, "| |  | || (_) |\\ V /|  __/ _           | |  | (_) || |    \\ V  V /| (_| || |  | (_| |  _     \\  /\\  /                            ");       
+    mvaddstr(msgStartY + i++, msgStartX, "|_|  |_| \\___/  \\_/  \\___|(_)          |_|   \\___/ |_|     \\_/\\_/  \\__,_||_|   \\__,_| (_)     \\/  \\/                             ");       
+    mvaddstr(msgStartY + i++, msgStartX, "                                        ____                _                              _             _____                   ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       |  _ \\              | |                            | |       _   / ____|                  ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |_) |  __ _   ___ | | ____      __ __ _  _ __  __| | ___  (_) | (___                    ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       |  _ <  / _` | / __|| |/ /\\ \\ /\\ / // _` || '__|/ _` |/ __|      \\___ \\                   ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |_) || (_| || (__ |   <  \\ V  V /| (_| || |  | (_| |\\__ \\  _   ____) |                  ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       |____/  \\__,_| \\___||_|\\_\\  \\_/\\_/  \\__,_||_|   \\__,_||___/ (_) |_____/                   ");                               
+    mvaddstr(msgStartY + i++, msgStartX, " _____         _          _             _____   _         _      _         _____                                                 ");
+    mvaddstr(msgStartY + i++, msgStartX, "|  __ \\       | |        | |        _  |  __ \\ (_)       | |    | |    _  |  __ \\                                                ");
+    mvaddstr(msgStartY + i++, msgStartX, "| |__) | ___  | |_  __ _ | |_  ___ (_) | |__) | _   __ _ | |__  | |_  (_) | |  | |                                               ");
+    mvaddstr(msgStartY + i++, msgStartX, "|  _  / / _ \\ | __|/ _` || __|/ _ \\    |  _  / | | / _` || '_ \\ | __|     | |  | |                                               ");
+    mvaddstr(msgStartY + i++, msgStartX, "| | \\ \\| (_) || |_| (_| || |_|  __/ _  | | \\ \\ | || (_| || | | || |_   _  | |__| |                                               ");
+    mvaddstr(msgStartY + i++, msgStartX, "|_|  \\_\\\\___/  \\__|\\__,_| \\__|\\___|(_) |_|  \\_\\|_| \\__, ||_| |_| \\__| (_) |_____/                                                ");
+    mvaddstr(msgStartY + i++, msgStartX, "                                                    __/ |                                                                        ");
+    mvaddstr(msgStartY + i++, msgStartX, "                                                   |___/                                                                         ");
+    mvaddstr(msgStartY + i++, msgStartX, "                                        _             __  _                                                                      ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |           / _|| |    _      /\\                                                        ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |      ___ | |_ | |_  (_)    /  \\                                                       ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |     / _ \\|  _|| __|       / /\\ \\                                                      ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       | |____|  __/| |  | |_   _   / ____ \\                                                     ");                               
+    mvaddstr(msgStartY + i++, msgStartX, "                                       |______|\\___||_|   \\__| (_) /_/    \\_\\                                                    ");                               
+    mvaddstr(msgStartY + i++, msgStartX, " ______                                                                                                                   _____  ");
+    mvaddstr(msgStartY + i++, msgStartX, "|  ____|                                                                                                              _  |  __ \\ ");
+    mvaddstr(msgStartY + i++, msgStartX, "| |__    ___   ___  __ _  _ __    ___    __ _   __ _  _ __ ___    ___    ___   _ __   _ __ ___    ___  _ __   _   _  (_) | |__) |");
+    mvaddstr(msgStartY + i++, msgStartX, "|  __|  / __| / __|/ _` || '_ \\  / _ \\  / _` | / _` || '_ ` _ \\  / _ \\  / _ \\ | '__| | '_ ` _ \\  / _ \\| '_ \\ | | | |     |  ___/ ");
+    mvaddstr(msgStartY + i++, msgStartX, "| |____ \\__ \\| (__| (_| || |_) ||  __/ | (_| || (_| || | | | | ||  __/ | (_) || |    | | | | | ||  __/| | | || |_| |  _  | |     ");
+    mvaddstr(msgStartY + i++, msgStartX, "|______||___/ \\___|\\__,_|| .__/  \\___|  \\__, | \\__,_||_| |_| |_| \\___|  \\___/ |_|    |_| |_| |_| \\___||_| |_| \\__,_| (_) |_|     ");
+    mvaddstr(msgStartY + i++, msgStartX, "                         | |             __/ |                                                                                   ");
+    mvaddstr(msgStartY + i++, msgStartX, "                         |_|            |___/                                                                                    ");
+
+    refresh();
 }

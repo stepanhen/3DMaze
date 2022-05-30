@@ -19,6 +19,13 @@ void Map::ChangeMap(std::vector<std::vector<int>> maze) {
 
 FrameCounter::FrameCounter() { time = 0; oldTime = 0; }
 
+void FrameCounter::SetTime() {
+    oldTime = time;
+    auto t = clock();
+    time = static_cast<double>(t);
+    frameTime = (time - oldTime) / 1000.0; //frameTime is the time this frame has taken, in seconds
+}
+
 Game::Game() {}
 Game::Game(int x,int y) {
     unlockedDoorMsg = false;
@@ -39,11 +46,11 @@ Game::Game(int x,int y) {
     }
     ih = InfoHandler(x,y);
     player.posX = 2; 
-    player.posY = 2;  //x and y start position
+    player.posY = 2;//x and y start position
     player.dirX = 1; 
     player.dirY = 0; //initial direction vector
     player.planeX = 0; 
-    player.planeY = -0.66; //the 2d raycaster version of camera plane
+    player.planeY = -0.66; //fov is 66 degrees
 
     fc = FrameCounter();
 }
@@ -56,8 +63,13 @@ void Game::Move(Directions dir) {
         default: break;
     }
 
-    if(player.posX + d*player.dirX * player.moveSpeed >= 0 && player.posX + player.dirX * player.moveSpeed < mapWidth && player.posY >= 0 && player.posY < mapWidth) if(map.map[int(player.posX + d*player.dirX * player.moveSpeed)][int(player.posY)] == false) player.posX += d*player.dirX * player.moveSpeed;
-    if(player.posY + d*player.dirY * player.moveSpeed >= 0 && player.posY + player.dirY * player.moveSpeed < mapHeight && player.posX >= 0 && player.posX < mapHeight) if(map.map[int(player.posX)][int(player.posY + d*player.dirY * player.moveSpeed)] == false) player.posY += d*player.dirY * player.moveSpeed;
+    //checks for collisions and sets new player position
+    if(player.posX + d*player.dirX * player.moveSpeed >= 0 && player.posX + player.dirX * player.moveSpeed < mapWidth && player.posY >= 0 && player.posY < mapWidth) 
+        if(map.map[int(player.posX + d*player.dirX * player.moveSpeed)][int(player.posY)] == false) 
+            player.posX += d*player.dirX * player.moveSpeed;
+    if(player.posY + d*player.dirY * player.moveSpeed >= 0 && player.posY + player.dirY * player.moveSpeed < mapHeight && player.posX >= 0 && player.posX < mapHeight) 
+        if(map.map[int(player.posX)][int(player.posY + d*player.dirY * player.moveSpeed)] 
+            == false) player.posY += d*player.dirY * player.moveSpeed;
 }
 void Game::Turn(Directions dir) {
     int d;
@@ -68,6 +80,7 @@ void Game::Turn(Directions dir) {
         default: break;
     }
 
+    //rotates player
     double oldDirX = player.dirX;
     player.dirX = player.dirX * cos(d * player.turnSpeed) - player.dirY * sin(d * player.turnSpeed);
     player.dirY = oldDirX * sin(d * player.turnSpeed) + player.dirY * cos(d * player.turnSpeed);
@@ -82,7 +95,7 @@ std::vector<int> Game::PrepareNewCol(int drawStart, int drawEnd, int color) {
         col.push_back(0);
     }
 
-    //draw the pixels of the stripe as a vertical line
+    //draw a vertical line
     for(int i = drawStart; i <= drawEnd; ++i) {
         if(i >= 0 && i <= screenHeight)
             col[i] = color;
@@ -91,6 +104,8 @@ std::vector<int> Game::PrepareNewCol(int drawStart, int drawEnd, int color) {
 }
 
 void Game::UpdateScreen(std::vector<int> col, int x) {
+    //gets a vertical line and updates screen with the new parts of it
+    //this screen buffering approach eliminates screen flickering when reloading screen
     int color;
     for(int i = 0; i <= screenHeight; i++) {
         if(screen[x][i] != col[i]) {
@@ -131,93 +146,73 @@ void Game::RayCast() {
         double sideDistX;
         double sideDistY;
 
-        //length of ray from one x or y-side to next x or y-side
-        //these are derived as:
-        //deltaDistX = sqrt(1 + (rayDirY * rayDirY) / (rayDirX * rayDirX))
-        //deltaDistY = sqrt(1 + (rayDirX * rayDirX) / (rayDirY * rayDirY))
-        //which can be simplified to abs(|rayDir| / rayDirX) and abs(|rayDir| / rayDirY)
-        //where |rayDir| is the length of the vector (rayDirX, rayDirY). Its length,
-        //unlike (dirX, dirY) is not 1, however this does not matter, only the
-        //ratio between deltaDistX and deltaDistY matters, due to the way the DDA
-        //stepping further below works. So the values can be computed as below.
-        // Division through zero is prevented, even though technically that's not
-        // needed in C++ with IEEE 754 floating point values.
+        //length of ray from one x or y side to next x or y side
         double deltaDistX = (rayDirX == 0) ? 1e30 : std::abs(1 / rayDirX);
         double deltaDistY = (rayDirY == 0) ? 1e30 : std::abs(1 / rayDirY);
 
+        //ray length
         double perpWallDist;
 
         //what direction to step in x or y-direction (either +1 or -1)
         int stepX;
         int stepY;
 
-        int hit = 0; //was there a wall hit?
-        int side; //was a NS or a EW wall hit?
-        //calculate step and initial sideDist
-        if(rayDirX < 0)
-        {
+        int hit = 0; //if ray hit the wall
+        int side;
+        //calculate step, rays will be moving by squares
+        if(rayDirX < 0) {
             stepX = -1;
             sideDistX = (player.posX - mapX) * deltaDistX;
         }
-        else
-        {
+        else {
             stepX = 1;
             sideDistX = (mapX + 1.0 - player.posX) * deltaDistX;
         }
-        if(rayDirY < 0)
-        {
+        if(rayDirY < 0) {
             stepY = -1;
             sideDistY = (player.posY - mapY) * deltaDistY;
         }
-        else
-        {
+        else {
             stepY = 1;
             sideDistY = (mapY + 1.0 - player.posY) * deltaDistY;
         }
-        //perform DDA
+        
         while(hit == 0)
         {
             //jump to next map square, either in x-direction, or in y-direction
-            if(sideDistX < sideDistY)
-            {
-            sideDistX += deltaDistX;
-            mapX += stepX;
-            side = 0;
+            if(sideDistX < sideDistY) {
+                sideDistX += deltaDistX;
+                mapX += stepX;
+                side = 0;
             }
-            else
-            {
-            sideDistY += deltaDistY;
-            mapY += stepY;
-            side = 1;
+            else {
+                sideDistY += deltaDistY;
+                mapY += stepY;
+                side = 1;
             }
-            //Check if ray has hit a wall
+            //check if ray has hit a wall
             if(map.map[mapX][mapY] > 0) hit = 1;
         }
-        //Calculate distance projected on camera direction. This is the shortest distance from the point where the wall is
-        //hit to the camera plane. Euclidean to center camera point would give fisheye effect!
-        //This can be computed as (mapX - posX + (1 - stepX) / 2) / rayDirX for side == 0, or same formula with Y
-        //for size == 1, but can be simplified to the code below thanks to how sideDist and deltaDist are computed:
-        //because they were left scaled to |rayDir|. sideDist is the entire length of the ray above after the multiple
-        //steps, but we subtract deltaDist once because one step more into the wall was taken above.
+       
+        //calculate ray length
         if(side == 0) perpWallDist = (sideDistX - deltaDistX);
         else          perpWallDist = (sideDistY - deltaDistY);
 
 
-        //INTERACTIVE ITEMS
+        //interactive items
         if(x == screenWidth / 2) {
             switch (map.map[mapX][mapY]) {
-                case DOOR_LOCKED:
-                    if(perpWallDist <= 1 && !keyHeld) {
+                case DOOR_LOCKED: //if locked door are in the middle of a screen do:
+                    if(perpWallDist <= 1 && !keyHeld) {//player doesn't have a key => print locked door
                         lockedDoorMsg = true;
-                    } else if(perpWallDist <= 1 && keyHeld) {
+                    } else if(perpWallDist <= 1 && keyHeld) {//player does have a key => unlock door
                         unlockedDoorMsg = true;
                         currDoorX = mapX;
                         currDoorY = mapY;
-                        //TODO
                     }
                     break;
-                case KEY:
-                    if(perpWallDist <= 1 && !keyHeld) {
+                case KEY://if key wall is in the middle of a screen
+                    if(perpWallDist <= 1 && !keyHeld) {//picks up the key if the player is close to it
                         keyPicked = true;
                         currKeyX = mapX;
                         currKeyY = mapY;
@@ -226,11 +221,11 @@ void Game::RayCast() {
             }
         }
 
-        //Calculate mapHeight of line to draw on screen
+        //calculate height of line to draw on screen
         int lineHeight = (int)(screenHeight / perpWallDist);
         if(lineHeight > screenHeight) lineHeight = screenHeight;
 
-        //calculate lowest and highest pixel to fill in current line
+        //calculate lowest and highest point to fill in current line
         int drawStart = -lineHeight / 2 + screenHeight / 2;
         int drawEnd = lineHeight / 2 + screenHeight / 2;
 
@@ -244,7 +239,7 @@ void Game::RayCast() {
             default: color = 0; break; //black
         }
 
-        //give x and y sides different brightness
+        //give x and y sides different shade
         int bold = 0;
         if(side == 1) {bold = 10;}
 
@@ -255,18 +250,13 @@ void Game::RayCast() {
 }
 
 void Game::SetSpeed() {
+    fc.SetTime();
     player.moveSpeed = fc.frameTime * 0.02; //the constant value is in squares/second
     player.turnSpeed = fc.frameTime * 0.01; //the constant value is in radians/second
 }
 
-void Game::SetTime() {
-    fc.oldTime = fc.time;
-    auto t = clock();
-    fc.time = static_cast<double>(t);
-    fc.frameTime = (fc.time - fc.oldTime) / 1000.0; //frameTime is the time this frame has taken, in seconds
-}
-
 void Game::PrintScreen() {
+    //prints the whole screen
     for(int i = 0; i < screenWidth; i++) {
         for(int j = 0; j < screenHeight; j++) {
             const char* c;
@@ -291,12 +281,8 @@ void Game::PrintScreen() {
     }
 }
 
-
-void Game::Render() {
-    RayCast();
-    SetTime();
-    SetSpeed();
-    if(keyPicked && cycleNum <= 15) {
+void Game::GameMechanics() {
+    if(keyPicked && cycleNum <= 15) {//if key was picked show keyfound message for some time
         ih.KeyFoundMsg();
         cycleNum++;
         if(cycleNum == 16) {
@@ -310,7 +296,7 @@ void Game::Render() {
             PrintScreen();
        }
     }
-    if(lockedDoorMsg && cycleNum <= 15) {
+    if(lockedDoorMsg && cycleNum <= 15) {//show locked door msg for some time
         ih.LockedDoorMsg();
         cycleNum++;
         if(cycleNum == 16) {
@@ -319,7 +305,7 @@ void Game::Render() {
             PrintScreen();
        }
     }
-    if(unlockedDoorMsg && cycleNum <= 15) {
+    if(unlockedDoorMsg && cycleNum <= 15) {// show unlocked door msg for some time and change the map
         ih.UnlockedDoorMsg();
         cycleNum++;
         if(cycleNum == 3) {
@@ -337,30 +323,12 @@ void Game::Render() {
             PrintScreen();
         }
     }
-    refresh();
 }
 
 
-void Game::ShowMap() {
-    for(int i = 0; i < 10; i++) {
-        for(int j = 0; j < 10; j++) {
-            if((int)player.posX == i && (int)player.posY == j) { 
-                mvaddstr(i + 10, j + 10, "X");
-            } else {
-                const char* c;
-                switch(map.map[i*5][j*5]) {
-                    case 0: c = "0"; break;
-                    case 1: c = "1"; break;
-                    case 2: c = "2"; break;
-                    case 3: c = "3"; break;
-                    case 4: c = "4"; break;
-                    default: c = " "; break;
-                }
-                attron(COLOR_PAIR(4));
-                mvaddstr(i + 10, j + 10, c);
-                attroff(COLOR_PAIR(4));
-                refresh();
-            }
-        }
-    }
+void Game::Render() {
+    RayCast();
+    SetSpeed();
+    GameMechanics();
+    refresh();
 }
