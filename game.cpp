@@ -1,22 +1,30 @@
 #include <vector>
+#include <memory>
 #include <cmath>
 #include <curses.h>
 #include <iostream>
 #include "game.hpp"
+#include "levels.hpp"
 
 Player::Player() {}
 
-Map::Map() {
-    ChangeMap(level1);
-}
-void Map::ChangeMap(std::vector<std::vector<int>> maze) {
-    for(int i = 0; i < mapWidth; i++) {
-        for(int j = 0; j < mapHeight; j++) {
-            map[i][j] = maze[i][j];
-        }
-    }
+Map::Map() {}
+Map::Map(int mapNum) {
+    if(mapNum == 1) { maps = maps1; }
+    else{ maps = maps2; }
+    map = maps[0];
+    currentMap = 0;
+    unlockedDoorMsg = false;
+    lockedDoorMsg = false;
+    keyPicked = false;
+    keyHeld = false;
+    changeKeyWall = false;
 }
 
+void Map::NextMap() {
+    map = maps[++currentMap];
+}
+ 
 FrameCounter::FrameCounter() { time = 0; oldTime = 0; }
 
 void FrameCounter::SetTime() {
@@ -28,31 +36,55 @@ void FrameCounter::SetTime() {
 
 Game::Game() {}
 Game::Game(int x,int y) {
-    unlockedDoorMsg = false;
-    lockedDoorMsg = false;
-    keyPicked = false;
-    keyHeld = false;
-    changeKeyWall = false;
+    currentMap = std::make_shared<Map>(1);
+    offlineMap = std::make_shared<Map>(2);
+
     screenWidth = x;
     screenHeight = y;
     cycleNum = 0;
-    level = 1;
     for (int i = 0; i < x; i++) {
-        std::vector<int> line;
-        for(int j = 0; j < y; j++) {
-            line.push_back(0);
-        }
-        screen.push_back(line);
+        std::vector<int> line(y, 0);
+        screen.push_back(std::move(line));
     }
-    ih = InfoHandler(x,y);
-    player.posX = 2; 
-    player.posY = 2;//x and y start position
-    player.dirX = 1; 
-    player.dirY = 0; //initial direction vector
-    player.planeX = 0; 
-    player.planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
+    ih = InfoHandler(x,y);    
+
+    currentPlayer = std::make_shared<Player>();
+    offlinePlayer = std::make_shared<Player>();
+
+    currentPlayer -> posX = 2; 
+    currentPlayer -> posY = 2;//x and y start position
+    currentPlayer -> dirX = 1; 
+    currentPlayer -> dirY = 0; //initial direction vector
+    currentPlayer -> planeX = 0; 
+    currentPlayer -> planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
+    currentPlayer -> wallColor = COLOR_WHITE;
+
+    offlinePlayer -> posX = 2; 
+    offlinePlayer -> posY = 2;//x and y start position
+    offlinePlayer -> dirX = 1; 
+    offlinePlayer -> dirY = 0; //initial direction vector
+    offlinePlayer -> planeX = 0; 
+    offlinePlayer -> planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
+    offlinePlayer -> wallColor = COLOR_BLUE;
 
     fc = FrameCounter();
+}
+
+void Game::SwitchMaps() {
+    auto m = currentMap;
+    currentMap = offlineMap;
+    offlineMap = m;
+}
+
+void Game::SwitchPlayers() {
+    auto p= currentPlayer;
+    currentPlayer = offlinePlayer;
+    offlinePlayer = p;
+    init_pair(WALL, currentPlayer -> wallColor, currentPlayer -> wallColor);
+    Render();
+    PrintScreen();
+
+    SwitchMaps();
 }
 
 void Game::Move(Directions dir) {
@@ -63,13 +95,13 @@ void Game::Move(Directions dir) {
         default: break;
     }
 
-    //checks for collisions and sets new player position
-    if(player.posX + d*player.dirX * player.moveSpeed >= 0 && player.posX + player.dirX * player.moveSpeed < mapWidth && player.posY >= 0 && player.posY < mapWidth) 
-        if(map.map[int(player.posX + d*player.dirX * player.moveSpeed)][int(player.posY)] == false) 
-            player.posX += d*player.dirX * player.moveSpeed;
-    if(player.posY + d*player.dirY * player.moveSpeed >= 0 && player.posY + player.dirY * player.moveSpeed < mapHeight && player.posX >= 0 && player.posX < mapHeight) 
-        if(map.map[int(player.posX)][int(player.posY + d*player.dirY * player.moveSpeed)] 
-            == false) player.posY += d*player.dirY * player.moveSpeed;
+    //checks for collisions and sets new currentPlayer position
+    if(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed >= 0 && currentPlayer->posX + currentPlayer->dirX * currentPlayer->moveSpeed < mapWidth && currentPlayer->posY >= 0 && currentPlayer->posY < mapWidth) 
+        if(currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == false) 
+            currentPlayer->posX += d*currentPlayer->dirX * currentPlayer->moveSpeed;
+    if(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed >= 0 && currentPlayer->posY + currentPlayer->dirY * currentPlayer->moveSpeed < mapHeight && currentPlayer->posX >= 0 && currentPlayer->posX < mapHeight) 
+        if(currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] 
+            == false) currentPlayer->posY += d*currentPlayer->dirY * currentPlayer->moveSpeed;
 }
 void Game::Turn(Directions dir) {
     int d;
@@ -81,19 +113,16 @@ void Game::Turn(Directions dir) {
     }
 
     //rotates player
-    double oldDirX = player.dirX;
-    player.dirX = player.dirX * cos(d * player.turnSpeed) - player.dirY * sin(d * player.turnSpeed);
-    player.dirY = oldDirX * sin(d * player.turnSpeed) + player.dirY * cos(d * player.turnSpeed);
-    double oldPlaneX = player.planeX;
-    player.planeX = player.planeX * cos(d * player.turnSpeed) - player.planeY * sin(d * player.turnSpeed);
-    player.planeY = oldPlaneX * sin(d * player.turnSpeed) + player.planeY * cos(d * player.turnSpeed);
+    double oldDirX = currentPlayer->dirX;
+    currentPlayer->dirX = currentPlayer->dirX * cos(d * currentPlayer->turnSpeed) - currentPlayer->dirY * sin(d * currentPlayer->turnSpeed);
+    currentPlayer->dirY = oldDirX * sin(d * currentPlayer->turnSpeed) + currentPlayer->dirY * cos(d * currentPlayer->turnSpeed);
+    double oldPlaneX = currentPlayer->planeX;
+    currentPlayer->planeX = currentPlayer->planeX * cos(d * currentPlayer->turnSpeed) - currentPlayer->planeY * sin(d * currentPlayer->turnSpeed);
+    currentPlayer->planeY = oldPlaneX * sin(d * currentPlayer->turnSpeed) + currentPlayer->planeY * cos(d * currentPlayer->turnSpeed);
 }
 
 std::vector<int> Game::PrepareNewCol(int drawStart, int drawEnd, int color) {
-    std::vector<int> col;
-    for(int j = 0; j <= screenHeight; j++) {
-        col.push_back(0);
-    }
+    std::vector<int> col (screenHeight, 0);
 
     //draw a vertical line
     for(int i = drawStart; i <= drawEnd; ++i) {
@@ -103,7 +132,7 @@ std::vector<int> Game::PrepareNewCol(int drawStart, int drawEnd, int color) {
     return col;
 }
 
-void Game::UpdateScreen(std::vector<int> col, int x) {
+void Game::UpdateScreen(const std::vector<int> & col, int x) {
     //gets a vertical line and updates screen with the new parts of it
     //this screen buffering approach eliminates screen flickering when reloading screen
     int color;
@@ -136,11 +165,11 @@ void Game::RayCast() {
     {
         //calculate ray position and direction
         double cameraX = 2 * x / (double)screenWidth - 1; //x-coordinate in camera space
-        double rayDirX = player.dirX + player.planeX * cameraX;
-        double rayDirY = player.dirY + player.planeY * cameraX;
+        double rayDirX = currentPlayer->dirX + currentPlayer->planeX * cameraX;
+        double rayDirY = currentPlayer->dirY + currentPlayer->planeY * cameraX;
         //which box of the map we're in
-        int mapX = int(player.posX);
-        int mapY = int(player.posY);
+        int mapX = int(currentPlayer->posX);
+        int mapY = int(currentPlayer->posY);
 
         //length of ray from current position to next x or y-side
         double sideDistX;
@@ -162,19 +191,19 @@ void Game::RayCast() {
         //calculate step, rays will be moving by squares
         if(rayDirX < 0) {
             stepX = -1;
-            sideDistX = (player.posX - mapX) * deltaDistX;
+            sideDistX = (currentPlayer->posX - mapX) * deltaDistX;
         }
         else {
             stepX = 1;
-            sideDistX = (mapX + 1.0 - player.posX) * deltaDistX;
+            sideDistX = (mapX + 1.0 - currentPlayer->posX) * deltaDistX;
         }
         if(rayDirY < 0) {
             stepY = -1;
-            sideDistY = (player.posY - mapY) * deltaDistY;
+            sideDistY = (currentPlayer->posY - mapY) * deltaDistY;
         }
         else {
             stepY = 1;
-            sideDistY = (mapY + 1.0 - player.posY) * deltaDistY;
+            sideDistY = (mapY + 1.0 - currentPlayer->posY) * deltaDistY;
         }
         
         while(hit == 0) {
@@ -190,7 +219,7 @@ void Game::RayCast() {
                 side = 1;
             }
             //check if ray has hit a wall
-            if(map.map[mapX][mapY] > 0) hit = 1;
+            if(currentMap -> map[mapX][mapY] > 0) hit = 1;
         }
        
         //calculate ray length
@@ -200,19 +229,19 @@ void Game::RayCast() {
 
         //interactive items
         if(x == screenWidth / 2) {
-            switch (map.map[mapX][mapY]) {
+            switch (currentMap -> map[mapX][mapY]) {
                 case DOOR_LOCKED: //if locked door are in the middle of a screen do:
-                    if(perpWallDist <= 1 && !keyHeld) {//player doesn't have a key => print locked door
-                        lockedDoorMsg = true;
-                    } else if(perpWallDist <= 1 && keyHeld) {//player does have a key => unlock door
-                        unlockedDoorMsg = true;
+                    if(perpWallDist <= 1 && !currentMap -> keyHeld) {//player doesn't have a key => print locked door
+                        currentMap -> lockedDoorMsg = true;
+                    } else if(perpWallDist <= 1 && currentMap -> keyHeld) {//player does have a key => unlock door
+                        currentMap -> unlockedDoorMsg = true;
                         currDoorX = mapX;
                         currDoorY = mapY;
                     }
                     break;
                 case KEY://if key wall is in the middle of a screen
-                    if(perpWallDist <= 1 && !keyHeld) {//picks up the key if the player is close to it
-                        keyPicked = true;
+                    if(perpWallDist <= 1 && !currentMap -> keyHeld) {//picks up the key if the player is close to it
+                        currentMap -> keyPicked = true;
                         currKeyX = mapX;
                         currKeyY = mapY;
                     }
@@ -229,15 +258,7 @@ void Game::RayCast() {
         int drawEnd = lineHeight / 2 + screenHeight / 2;
 
         //choose wall color
-        int color;
-        switch(map.map[mapX][mapY])
-        {
-            case 1:  color = 1; break; //red
-            case 2:  color = 2; break; //blue
-            case 3:  color = 3; break; //green
-            default: color = 0; break; //black
-        }
-
+        int color = currentMap -> map[mapX][mapY];
         //give x and y sides different shade
         int bold = 0;
         if(side == 1) {bold = 10;}
@@ -250,8 +271,8 @@ void Game::RayCast() {
 
 void Game::SetSpeed() {
     fc.SetTime();
-    player.moveSpeed = fc.frameTime * 0.02; //the constant value is in squares/second
-    player.turnSpeed = fc.frameTime * 0.01; //the constant value is in radians/second
+    currentPlayer->moveSpeed = fc.frameTime * 0.03; //the constant value is in squares/second
+    currentPlayer->turnSpeed = fc.frameTime * 0.02; //the constant value is in radians/second
 }
 
 void Game::PrintScreen() {
@@ -281,44 +302,39 @@ void Game::PrintScreen() {
 }
 
 void Game::GameMechanics() {
-    if(keyPicked && cycleNum <= 15) {//if key was picked show keyfound message for some time
+    if(currentMap -> keyPicked && cycleNum <= 15) {//if key was picked show keyfound message for some time
         ih.KeyFoundMsg();
+        currentMap -> keyHeld = true;
         cycleNum++;
         if(cycleNum == 16) {
             cycleNum = 0;
-            keyHeld = true;
-            map.map[currKeyX][currKeyY] = WALL;
-            if(level == 3) {
-                map.map[2][3] = BACKGROUND; //OPEN HIDDEN DOOR
+            currentMap -> map[currKeyX][currKeyY] = WALL;
+            if(currentMap -> currentMap == 2) {
+                currentMap -> map[2][3] = BACKGROUND; //OPEN HIDDEN DOOR
             }
-            keyPicked = false;
+            currentMap -> keyPicked = false;
             PrintScreen();
        }
     }
-    if(lockedDoorMsg && cycleNum <= 15) {//show locked door msg for some time
+    if(currentMap -> lockedDoorMsg && cycleNum <= 15) {//show locked door msg for some time
         ih.LockedDoorMsg();
         cycleNum++;
         if(cycleNum == 16) {
             cycleNum = 0;
-            lockedDoorMsg = false;
+            currentMap -> lockedDoorMsg = false;
             PrintScreen();
        }
     }
-    if(unlockedDoorMsg && cycleNum <= 15) {// show unlocked door msg for some time and change the map
+    if(currentMap -> unlockedDoorMsg && cycleNum <= 15) {// show unlocked door msg for some time and change the map
         ih.UnlockedDoorMsg();
         cycleNum++;
         if(cycleNum == 3) {
-            level++;
-            if(level == 2) {
-                map.ChangeMap(level2);
-            } else if(level == 3) {
-                map.ChangeMap(level3);
-            }
+            currentMap -> NextMap();
         }
         if(cycleNum == 16) {
             cycleNum = 0;
-            keyHeld = false;
-            unlockedDoorMsg = false;
+            currentMap -> keyHeld = false;
+            currentMap -> unlockedDoorMsg = false;
             PrintScreen();
         }
     }
@@ -331,3 +347,8 @@ void Game::Render() {
     GameMechanics();
     refresh();
 }
+/*
+    TODO:
+        - Add buttons that activate traps, open walls, create walls
+        - Add restart button
+*/

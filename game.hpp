@@ -1,7 +1,9 @@
 #ifndef GAME_HPP_
 #define GAME_HPP_
 
+#include <memory>
 #include <vector>
+#include <curses.h>
 #include "visuals.hpp"
 #include "levels.hpp"
 
@@ -25,8 +27,16 @@ enum Directions {
 class Map {
     public:
         Map();
-        int map[mapWidth][mapHeight];
-        void ChangeMap(std::vector<std::vector<int>> maze);
+        Map(int n);
+        std::vector<std::vector<int>> map;
+        std::vector<std::vector<std::vector<int>>> maps;
+        int currentMap;
+        void NextMap();
+        bool keyHeld; //if player holds a key
+        bool keyPicked; //if key was picked
+        bool lockedDoorMsg; //if locked door message should be drawn
+        bool unlockedDoorMsg; //if unlocked door message should be drawn
+        bool changeKeyWall; //if key wall should be changed to normal wall
 };
 
 class Player {
@@ -43,6 +53,7 @@ class Player {
         double planeY;
         double moveSpeed;
         double turnSpeed;
+        int wallColor;
 };
 
 class FrameCounter { 
@@ -62,17 +73,15 @@ class Game {
         void Render(); //brings together raycasting, printing and game mechanics
         void Move(Directions dir); //moves with player
         void Turn(Directions dir); //rotates the player
+        void SwitchPlayers();
         void PrintScreen();
     private:
         FrameCounter fc;
-        Player player;
-        Map map;
+        std::shared_ptr<Player> currentPlayer;
+        std::shared_ptr<Player> offlinePlayer;
+        std::shared_ptr<Map> currentMap;
+        std::shared_ptr<Map> offlineMap;
         InfoHandler ih;
-        bool keyHeld; //if player holds a key
-        bool keyPicked; //if key was picked
-        bool lockedDoorMsg; //if locked door message should be drawn
-        bool unlockedDoorMsg; //if unlocked door message should be drawn
-        bool changeKeyWall; //if key wall should be changed to normal wall
         //position of key wall
         int currKeyX;
         int currKeyY;
@@ -82,13 +91,13 @@ class Game {
         int screenHeight;
         int screenWidth;
         int cycleNum;
-        int level;
         std::vector<std::vector<int>> screen; //represents what is drawn on the screen
         std::vector<int> PrepareNewCol(int s, int e, int c);
-        void UpdateScreen(std::vector<int> c, int x); //gets new column and updates new screen parts
+        void UpdateScreen(const std::vector<int> & c, int x); //gets new column and updates new screen parts
         void RayCast(); //raycasting function
         void SetSpeed(); //sets moving and rotating speed acording fps
         void GameMechanics();
+        void SwitchMaps();
 };     
 
 

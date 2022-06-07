@@ -85,6 +85,9 @@ int main(void) {
                         endwin();
                         pause = true;;
                         break;
+                    case 'n':
+                        g.SwitchPlayers();
+                        break;
                 } 
             }
         }
