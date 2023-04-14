@@ -16,6 +16,9 @@
 #define WALL 1
 #define DOOR_LOCKED 2
 #define KEY 3
+#define BUTTON 4
+#define WALL_UP 5
+#define WALL_DOWN 6
 
 enum Directions {
     FRONT,
@@ -74,7 +77,9 @@ class Game {
         void Move(Directions dir); //moves with player
         void Turn(Directions dir); //rotates the player
         void SwitchPlayers();
+        void ButtonReact();
         void PrintScreen();
+        bool buttonClickExpected;
     private:
         FrameCounter fc;
         std::shared_ptr<Player> currentPlayer;

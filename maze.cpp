@@ -1,7 +1,4 @@
 #include <iostream>
-#include <vector>
-#include <string>
-#include <memory>
 #include <curses.h>
 #include "game.hpp"
 #include "levels.hpp"
@@ -19,6 +16,9 @@ int main(void) {
     init_pair(DOOR_LOCKED, COLOR_MAGENTA, COLOR_MAGENTA); // DOOR LOCKED
     init_pair(KEY, COLOR_RED, COLOR_RED); // WALL WITH KEY
     init_pair(BACKGROUND, COLOR_BLACK, COLOR_BLACK); // BACKGROUND
+    init_pair(BUTTON, COLOR_GREEN, COLOR_GREEN);
+    init_pair(WALL_UP, COLOR_WHITE, COLOR_WHITE);
+    init_pair(WALL_DOWN, COLOR_WHITE, COLOR_WHITE);
     
     Game g = Game(COLS, LINES);
     MainMenu m = MainMenu(COLS, LINES);
@@ -87,6 +87,12 @@ int main(void) {
                         break;
                     case 'n':
                         g.SwitchPlayers();
+                        break;
+                    case 'e':
+                        if(g.buttonClickExpected) {
+                            g.ButtonReact();
+                            g.buttonClickExpected = false;
+                        }
                         break;
                 } 
             }

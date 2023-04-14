@@ -12,8 +12,8 @@ Map::Map() {}
 Map::Map(int mapNum) {
     if(mapNum == 1) { maps = maps1; }
     else{ maps = maps2; }
-    map = maps[0];
     currentMap = 0;
+    map = maps[currentMap];
     unlockedDoorMsg = false;
     lockedDoorMsg = false;
     keyPicked = false;
@@ -39,6 +39,8 @@ Game::Game(int x,int y) {
     currentMap = std::make_shared<Map>(1);
     offlineMap = std::make_shared<Map>(2);
 
+    buttonClickExpected = false;
+
     screenWidth = x;
     screenHeight = y;
     cycleNum = 0;
@@ -52,7 +54,7 @@ Game::Game(int x,int y) {
     offlinePlayer = std::make_shared<Player>();
 
     currentPlayer -> posX = 2; 
-    currentPlayer -> posY = 2;//x and y start position
+    currentPlayer -> posY = 2; //x  and y start position
     currentPlayer -> dirX = 1; 
     currentPlayer -> dirY = 0; //initial direction vector
     currentPlayer -> planeX = 0; 
@@ -77,7 +79,7 @@ void Game::SwitchMaps() {
 }
 
 void Game::SwitchPlayers() {
-    auto p= currentPlayer;
+    auto p = currentPlayer;
     currentPlayer = offlinePlayer;
     offlinePlayer = p;
     init_pair(WALL, currentPlayer -> wallColor, currentPlayer -> wallColor);
@@ -85,6 +87,28 @@ void Game::SwitchPlayers() {
     PrintScreen();
 
     SwitchMaps();
+}
+
+void Game::ButtonReact() {
+    if(currentMap -> currentMap != offlineMap -> currentMap) {
+        //PLAYERS MUST BE IN THE SAME LEVEL
+        return;
+    }
+    
+    for(int i = 0; i < mapHeight; ++i) {
+        for(int j = 0; j < mapWidth; ++j) {
+            if(currentMap->map[i][j] == WALL_UP) {
+                currentMap->map[i][j] = WALL_DOWN;
+            } else if(currentMap->map[i][j] == WALL_DOWN) {
+                currentMap->map[i][j] = WALL_UP;
+            }
+            if(offlineMap->map[i][j] == WALL_UP) {
+                offlineMap->map[i][j] = WALL_DOWN;
+            } else if(offlineMap->map[i][j] == WALL_DOWN) {
+                offlineMap->map[i][j] = WALL_UP;
+            }
+        }
+    }
 }
 
 void Game::Move(Directions dir) {
@@ -97,11 +121,11 @@ void Game::Move(Directions dir) {
 
     //checks for collisions and sets new currentPlayer position
     if(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed >= 0 && currentPlayer->posX + currentPlayer->dirX * currentPlayer->moveSpeed < mapWidth && currentPlayer->posY >= 0 && currentPlayer->posY < mapWidth) 
-        if(currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == false) 
+        if(currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == BACKGROUND || currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == WALL_DOWN) 
             currentPlayer->posX += d*currentPlayer->dirX * currentPlayer->moveSpeed;
     if(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed >= 0 && currentPlayer->posY + currentPlayer->dirY * currentPlayer->moveSpeed < mapHeight && currentPlayer->posX >= 0 && currentPlayer->posX < mapHeight) 
-        if(currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] 
-            == false) currentPlayer->posY += d*currentPlayer->dirY * currentPlayer->moveSpeed;
+        if(currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] == BACKGROUND || currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] == WALL_DOWN) 
+            currentPlayer->posY += d*currentPlayer->dirY * currentPlayer->moveSpeed;
 }
 void Game::Turn(Directions dir) {
     int d;
@@ -142,14 +166,20 @@ void Game::UpdateScreen(const std::vector<int> & col, int x) {
             const char* c;
             bool bold = false;
             switch(col[i]) {
-                case 0: color = 0; c = " "; break;
-                case 1: color = 1; c = " "; break;
+                case BACKGROUND: color = BACKGROUND; c = " "; break;
+                case WALL: color = WALL; c = " "; break;
                 case 2: color = 2; c = " "; break;
                 case 3: color = 3; c = " "; break;
-                case 10: color = 0; c = "\\"; bold = true; break;
-                case 11: color = 1; c = "\\"; bold = true; break;
+                case 4: color = 4; c = " "; break;
+                case 5: color = WALL; c = " "; break;
+                case WALL_DOWN: color = BACKGROUND; c = " "; break;
+                case 10: color = BACKGROUND; c = "\\"; bold = true; break;
+                case 11: color = WALL; c = "\\"; bold = true; break;
                 case 12: color = 2; c = "\\"; bold = true; break;
                 case 13: color = 3; c = "\\"; bold = true; break;
+                case 14: color = 4; c = "\\"; bold = true; break;
+                case 15: color = WALL; c = "\\"; bold = true; break;
+                case 16: color = BACKGROUND; c = "\\"; bold = true; break;
             }
             if(bold) attron(A_BOLD);
             attron(COLOR_PAIR(color));
@@ -161,6 +191,7 @@ void Game::UpdateScreen(const std::vector<int> & col, int x) {
 }
 
 void Game::RayCast() {
+    buttonClickExpected = false;
     for(int x = 0; x < screenWidth; x++)
     {
         //calculate ray position and direction
@@ -219,7 +250,7 @@ void Game::RayCast() {
                 side = 1;
             }
             //check if ray has hit a wall
-            if(currentMap -> map[mapX][mapY] > 0) hit = 1;
+            if(currentMap -> map[mapX][mapY] != 0 && currentMap -> map[mapX][mapY] != WALL_DOWN) hit = 1;
         }
        
         //calculate ray length
@@ -231,20 +262,28 @@ void Game::RayCast() {
         if(x == screenWidth / 2) {
             switch (currentMap -> map[mapX][mapY]) {
                 case DOOR_LOCKED: //if locked door are in the middle of a screen do:
-                    if(perpWallDist <= 1 && !currentMap -> keyHeld) {//player doesn't have a key => print locked door
+                    if(perpWallDist < 1 && !currentMap -> keyHeld ) {//player doesn't have a key => print locked door
                         currentMap -> lockedDoorMsg = true;
-                    } else if(perpWallDist <= 1 && currentMap -> keyHeld) {//player does have a key => unlock door
+                    } else if(perpWallDist < 1 && currentMap -> keyHeld 
+                        && currentMap -> map[int(currentPlayer -> posX)][int(currentPlayer -> posY)] == BACKGROUND) {//player does have a key => unlock door
                         currentMap -> unlockedDoorMsg = true;
                         currDoorX = mapX;
                         currDoorY = mapY;
                     }
                     break;
                 case KEY://if key wall is in the middle of a screen
-                    if(perpWallDist <= 1 && !currentMap -> keyHeld) {//picks up the key if the player is close to it
+                    if(perpWallDist < 1 && !currentMap -> keyHeld) {//picks up the key if the player is close to it
                         currentMap -> keyPicked = true;
                         currKeyX = mapX;
                         currKeyY = mapY;
                     }
+                    break;
+                case BUTTON:
+                    if(perpWallDist < 1 
+                        && currentMap -> map[int(currentPlayer -> posX)][int(currentPlayer -> posY)] == BACKGROUND) {
+                        buttonClickExpected = true;
+                    }
+                    
                     break;
             }
         }
@@ -283,14 +322,20 @@ void Game::PrintScreen() {
             int color;
             bool bold = false;
             switch(screen[i][j]) {
-                case 0: color = 0; c = " "; break;
+                case BACKGROUND: color = BACKGROUND; c = " "; break;
                 case 1: color = 1; c = " "; break;
                 case 2: color = 2; c = " "; break;
                 case 3: color = 3; c = " "; break;
-                case 10: color = 0; c = "\\"; bold = true; break;
-                case 11: color = 1; c = "\\"; bold = true; break;
+                case 4: color = 4; c = " "; break;
+                case 5: color = 1; c = " "; break;
+                case WALL_DOWN: color = BACKGROUND; c = " "; break;
+                case 10: color = BACKGROUND; c = "\\"; bold = true; break;
+                case 11: color = WALL; c = "\\"; bold = true; break;
                 case 12: color = 2; c = "\\"; bold = true; break;
                 case 13: color = 3; c = "\\"; bold = true; break;
+                case 14: color = 4; c = "\\"; bold = true; break;
+                case 15: color = WALL; c = "\\"; bold = true; break;
+                case 16: color = BACKGROUND; c = "\\"; bold = true; break;
             }
             if(bold) attron(A_BOLD);
             attron(COLOR_PAIR(color));
