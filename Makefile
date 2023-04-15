@@ -6,13 +6,20 @@ CC = g++
   #  -Wall  - this flag is used to turn on most compiler warnings
 CFLAGS  = -Wall -std=c++17
  
-  # The build target 
-TARGET = maze
+  # The build target
+
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+	TARGET = maze.so
+else
+	TARGET = maze.dll
+endif
  
 all: $(TARGET)
  
-$(TARGET): $(TARGET).cpp game.cpp game.hpp levels.cpp levels.hpp visuals.cpp visuals.hpp
-	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).cpp game.cpp visuals.cpp levels.cpp -l ncurses
+$(TARGET): maze.cpp game.cpp game.hpp levels.cpp levels.hpp visuals.cpp visuals.hpp
+	$(CC) $(CFLAGS) -o $(TARGET) maze.cpp game.cpp visuals.cpp levels.cpp -l ncurses
 
 clean:
 	$(RM) $(TARGET)
