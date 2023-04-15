@@ -3,9 +3,14 @@
 
 #include <memory>
 #include <vector>
-#include <curses.h>
 #include "visuals.hpp"
 #include "levels.hpp"
+
+#ifdef _WIN32
+#include <ncurses\curses.h>
+#else
+#include <curses.h>
+#endif
 
 //color bindings
 #define BACKGROUND 0 

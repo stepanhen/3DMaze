@@ -1,8 +1,13 @@
 #include <iostream>
-#include <curses.h>
 #include "game.hpp"
 #include "levels.hpp"
 #include "visuals.hpp"
+
+#ifdef _WIN32
+#include <ncurses\curses.h>
+#else
+#include <curses.h>
+#endif
 
 
 int main(void) {

@@ -1,5 +1,10 @@
 #include "visuals.hpp"
+
+#ifdef _WIN32
+#include <ncurses\curses.h>
+#else
 #include <curses.h>
+#endif
 
 
 InfoHandler::InfoHandler() {}

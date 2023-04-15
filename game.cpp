@@ -1,10 +1,19 @@
 #include <vector>
 #include <memory>
 #include <cmath>
-#include <curses.h>
 #include <iostream>
 #include "game.hpp"
 #include "levels.hpp"
+
+#ifdef _WIN32
+#include <ncurses\curses.h>
+#define TURNSPEED 0.5
+#define MOVESPEED 0.6
+#else
+#include <curses.h>
+#define TURNSPEED 0.02
+#define MOVESPEED 0.03
+#endif
 
 Player::Player() {}
 
@@ -307,8 +316,8 @@ void Game::RayCast() {
 
 void Game::SetSpeed() {
     fc.SetTime();
-    currentPlayer->moveSpeed = fc.frameTime * 0.03; //the constant value is in squares/second
-    currentPlayer->turnSpeed = fc.frameTime * 0.02; //the constant value is in radians/second
+    currentPlayer->moveSpeed = fc.frameTime * MOVESPEED; //the constant value is in squares/second
+    currentPlayer->turnSpeed = fc.frameTime * TURNSPEED; //the constant value is in radians/second
 }
 
 void Game::PrintScreen() {
