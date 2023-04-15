@@ -11,9 +11,9 @@ CFLAGS  = -Wall -std=c++17
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Linux)
-	TARGET = maze.so
+	TARGET = maze
 else
-	TARGET = maze.dll
+	TARGET = maze.exe
 endif
  
 all: $(TARGET)
