@@ -49,7 +49,22 @@ MainMenu::MainMenu(int w, int h) {
     screenWidth = w;
     screenHeight = h;
     selected = 0;
+    inGame = false;
 }
+
+void MainMenu::ResumeButton() {
+    int msgWidth = 54;
+    if(selected == 0) msgWidth -= 20;
+    int msgStartX = screenWidth / 2 - msgWidth / 2;
+    int msgStartY = (screenHeight - 15) / 4;
+
+    mvaddstr(msgStartY + 0, msgStartX, " ______  ______  ______  __  __  __    __  ______    ");
+    mvaddstr(msgStartY + 1, msgStartX, "/\\  == \\/\\  ___\\/\\  ___\\/\\ \\/\\ \\/\\ \"-./  \\/\\  ___\\   ");
+    mvaddstr(msgStartY + 2, msgStartX, "\\ \\  __<\\ \\  __\\\\ \\___  \\ \\ \\_\\ \\ \\ \\-./\\ \\ \\  __\\   ");
+    mvaddstr(msgStartY + 3, msgStartX, " \\ \\_\\ \\_\\ \\_____\\/\\_____\\ \\_____\\ \\_\\ \\ \\_\\ \\_____\\ ");
+    mvaddstr(msgStartY + 4, msgStartX, "  \\/_/ /_/\\/_____/\\/_____/\\/_____/\\/_/  \\/_/\\/_____/ ");                                                     
+}
+
 void MainMenu::StartButton() {
     int msgWidth = 42;
     if(selected == 0) msgWidth -= 20;
@@ -97,11 +112,16 @@ void MainMenu::Down() {
 void MainMenu::Up() {
     selected--;
     if (selected < 0) selected = 2;
+    
 }
 
 void MainMenu::PrintMenu() {
     clear();
-    StartButton();
+    if (inGame) {
+        ResumeButton();
+    } else {
+        StartButton();
+    }
     HelpButton();
     ExitButton();
     refresh();
@@ -114,31 +134,96 @@ HelpMenu::HelpMenu(int w, int h) {
 }
 
 void HelpMenu::PrintMenu() {
-    int msgWidth = 129;
-    int msgStartY = screenHeight / 2 - 34 / 2;
-    int msgStartX = screenWidth / 2 - msgWidth / 2;
-    int i = 1;
+    int start = 2;
+    init_pair(10, COLOR_BLUE, COLOR_BLUE);
+    init_pair(11, COLOR_BLACK, COLOR_WHITE);
+    mvaddstr(start, 10, "WALL TYPES:");
 
-    mvaddstr(msgStartY, msgStartX, " __  __                                 ");       
-    mvaddstr(msgStartY + i++, msgStartX, "|  \\/  |                   _     ");       
-    mvaddstr(msgStartY + i++, msgStartX, "| \\  / |  ___ __   __ ___ (_)    ");       
-    mvaddstr(msgStartY + i++, msgStartX, "| |\\/| | / _ \\\\ \\ / // _ \\   ");       
-    mvaddstr(msgStartY + i++, msgStartX, "| |  | || (_) |\\ V /|  __/ _     ");       
-    mvaddstr(msgStartY + i++, msgStartX, "|_|  |_| \\___/  \\_/  \\___|(_)  ");       
-    mvaddstr(msgStartY + i++, msgStartX, " _____         _          _            ");
-    mvaddstr(msgStartY + i++, msgStartX, "|  __ \\       | |        | |        _ ");
-    mvaddstr(msgStartY + i++, msgStartX, "| |__) | ___  | |_  __ _ | |_  ___ (_) ");
-    mvaddstr(msgStartY + i++, msgStartX, "|  _  / / _ \\ | __|/ _` || __|/ _ \\ ");
-    mvaddstr(msgStartY + i++, msgStartX, "| | \\ \\| (_) || |_| (_| || |_|  __/ _  ");
-    mvaddstr(msgStartY + i++, msgStartX, "|_|  \\_\\\\___/  \\__|\\__,_| \\__|\\___|(_)");                           
-    mvaddstr(msgStartY + i++, msgStartX, " ______                                                                                                                   _____  ");
-    mvaddstr(msgStartY + i++, msgStartX, "|  ____|                                                                                                              _  |  __ \\ ");
-    mvaddstr(msgStartY + i++, msgStartX, "| |__    ___   ___  __ _  _ __    ___    __ _   __ _  _ __ ___    ___    ___   _ __   _ __ ___    ___  _ __   _   _  (_) | |__) |");
-    mvaddstr(msgStartY + i++, msgStartX, "|  __|  / __| / __|/ _` || '_ \\  / _ \\  / _` | / _` || '_ ` _ \\  / _ \\  / _ \\ | '__| | '_ ` _ \\  / _ \\| '_ \\ | | | |     |  ___/ ");
-    mvaddstr(msgStartY + i++, msgStartX, "| |____ \\__ \\| (__| (_| || |_) ||  __/ | (_| || (_| || | | | | ||  __/ | (_) || |    | | | | | ||  __/| | | || |_| |  _  | |     ");
-    mvaddstr(msgStartY + i++, msgStartX, "|______||___/ \\___|\\__,_|| .__/  \\___|  \\__, | \\__,_||_| |_| |_| \\___|  \\___/ |_|    |_| |_| |_| \\___||_| |_| \\__,_| (_) |_|     ");
-    mvaddstr(msgStartY + i++, msgStartX, "                         | |             __/ |                                                                                   ");
-    mvaddstr(msgStartY + i++, msgStartX, "                         |_|            |___/                                                                                    ");
+    start += 2;
+    attron(COLOR_PAIR(1));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(1));
+    mvaddstr(start, 14, "First player default wall.");
 
+    start += 2;
+    attron(COLOR_PAIR(10));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(10));
+    mvaddstr(start, 14, "Second player default wall.");
+
+    start += 2;
+    attron(COLOR_PAIR(2));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(2)); 
+    mvaddstr(start, 14, "Locked door. Unlocking them will change the map to a higher level.");
+
+    start += 2;
+    attron(COLOR_PAIR(3));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(3)); 
+    mvaddstr(start, 14, "Wall containing a key to locked doors.");
+
+    start += 2;
+    attron(COLOR_PAIR(5));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(5)); 
+    mvaddstr(start, 14, "Movable wall which can appear or disappear and player can walk through.");
+
+    start += 2;
+    attron(COLOR_PAIR(4));
+    mvaddstr(start, 10, "   ");
+    attroff(COLOR_PAIR(4)); 
+    mvaddstr(start, 14, "Wall with button which can move with movable walls. (BUTTONS ONLY WORK AT THE SAME LEVEL!)");
+
+    start += 2;
+    mvaddstr(start, 10, "CONTROLS:");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " W ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Move forward.");
+    
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " S ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Move back.");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " A ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Turn left.");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " D ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Turn right.");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " P ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Open menu.");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " N ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Switch players.");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " E ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 14, "Activate button. (PLAYER MUST BE AT MOST ONE SQUARE FROM BUTTON)");
+
+    start += 2;
+    attron(COLOR_PAIR(11));
+    mvaddstr(start, 10, " Enter ");
+    attroff(COLOR_PAIR(11));
+    mvaddstr(start, 18, "Confirm.");
     refresh();
 }

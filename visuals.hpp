@@ -19,10 +19,12 @@ class MainMenu {
         MainMenu();
         MainMenu(int w, int h);
         int selected;
+        bool inGame;
         int screenWidth;
         int screenHeight;
         void PrintMenu();
         void StartButton();
+        void ResumeButton();
         void HelpButton();
         void ExitButton();
         void Down();
