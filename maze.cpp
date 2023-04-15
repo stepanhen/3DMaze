@@ -16,9 +16,8 @@ int main(void) {
     init_pair(DOOR_LOCKED, COLOR_MAGENTA, COLOR_MAGENTA); // DOOR LOCKED
     init_pair(KEY, COLOR_RED, COLOR_RED); // WALL WITH KEY
     init_pair(BACKGROUND, COLOR_BLACK, COLOR_BLACK); // BACKGROUND
-    init_pair(BUTTON, COLOR_GREEN, COLOR_GREEN);
-    init_pair(WALL_UP, COLOR_WHITE, COLOR_WHITE);
-    init_pair(WALL_DOWN, COLOR_WHITE, COLOR_WHITE);
+    init_pair(BUTTON, COLOR_GREEN, COLOR_GREEN); // BUTTON
+    init_pair(WALL_UP, COLOR_YELLOW, COLOR_YELLOW); // MOVABLE WALL
     
     Game g = Game(COLS, LINES);
     MainMenu m = MainMenu(COLS, LINES);
@@ -63,6 +62,7 @@ int main(void) {
         //User selected start
         if(m.selected == 0) {
             //Start or resume the game
+            m.inGame = true;
             g.PrintScreen();
             bool pause = false;
             while(!pause){
@@ -82,7 +82,6 @@ int main(void) {
                         g.Move(FRONT);
                         break;
                     case 'p':
-                        endwin();
                         pause = true;;
                         break;
                     case 'n':

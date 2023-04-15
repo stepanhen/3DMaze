@@ -7,10 +7,6 @@
 #include "visuals.hpp"
 #include "levels.hpp"
 
-//default size of the map
-#define mapWidth 10
-#define mapHeight 10
-
 //color bindings
 #define BACKGROUND 0 
 #define WALL 1
@@ -34,6 +30,8 @@ class Map {
         std::vector<std::vector<int>> map;
         std::vector<std::vector<std::vector<int>>> maps;
         int currentMap;
+        int height;
+        int width;
         void NextMap();
         bool keyHeld; //if player holds a key
         bool keyPicked; //if key was picked

@@ -19,10 +19,14 @@ Map::Map(int mapNum) {
     keyPicked = false;
     keyHeld = false;
     changeKeyWall = false;
+    width = map.size();
+    height = map[0].size();
 }
 
 void Map::NextMap() {
     map = maps[++currentMap];
+    width = map.size();
+    height = map[0].size();
 }
  
 FrameCounter::FrameCounter() { time = 0; oldTime = 0; }
@@ -58,15 +62,15 @@ Game::Game(int x,int y) {
     currentPlayer -> dirX = 1; 
     currentPlayer -> dirY = 0; //initial direction vector
     currentPlayer -> planeX = 0; 
-    currentPlayer -> planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
+    currentPlayer -> planeY = -0.66; //fov is 66 degrees, plane must be perpendicular to player direction
     currentPlayer -> wallColor = COLOR_WHITE;
 
-    offlinePlayer -> posX = 2; 
-    offlinePlayer -> posY = 2;//x and y start position
+    offlinePlayer -> posX = 1.1; 
+    offlinePlayer -> posY = 1.5;
     offlinePlayer -> dirX = 1; 
-    offlinePlayer -> dirY = 0; //initial direction vector
+    offlinePlayer -> dirY = 0;
     offlinePlayer -> planeX = 0; 
-    offlinePlayer -> planeY = -0.66; //fov is 66 degrees, plae must be perpendicular to player direction
+    offlinePlayer -> planeY = -0.66;
     offlinePlayer -> wallColor = COLOR_BLUE;
 
     fc = FrameCounter();
@@ -83,11 +87,11 @@ void Game::SwitchPlayers() {
     currentPlayer = offlinePlayer;
     offlinePlayer = p;
     init_pair(WALL, currentPlayer -> wallColor, currentPlayer -> wallColor);
+    SwitchMaps();
     Render();
     PrintScreen();
-
-    SwitchMaps();
 }
+
 
 void Game::ButtonReact() {
     if(currentMap -> currentMap != offlineMap -> currentMap) {
@@ -95,8 +99,8 @@ void Game::ButtonReact() {
         return;
     }
     
-    for(int i = 0; i < mapHeight; ++i) {
-        for(int j = 0; j < mapWidth; ++j) {
+    for(int i = 0; i < currentMap -> width; ++i) {
+        for(int j = 0; j < currentMap -> height; ++j) {
             if(currentMap->map[i][j] == WALL_UP) {
                 currentMap->map[i][j] = WALL_DOWN;
             } else if(currentMap->map[i][j] == WALL_DOWN) {
@@ -119,12 +123,17 @@ void Game::Move(Directions dir) {
         default: break;
     }
 
+    int nextX = currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed;  
+    int nextY = currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed;  
+
+    int walkingToX = currentMap -> map[int(nextX)][int(currentPlayer->posY)]; 
+    int walkingToY = currentMap -> map[int(currentPlayer->posX)][int(nextY)];  
     //checks for collisions and sets new currentPlayer position
-    if(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed >= 0 && currentPlayer->posX + currentPlayer->dirX * currentPlayer->moveSpeed < mapWidth && currentPlayer->posY >= 0 && currentPlayer->posY < mapWidth) 
-        if(currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == BACKGROUND || currentMap -> map[int(currentPlayer->posX + d*currentPlayer->dirX * currentPlayer->moveSpeed)][int(currentPlayer->posY)] == WALL_DOWN) 
+    if(nextX >= 0 && nextX < currentMap -> width && currentPlayer->posY >= 0 && currentPlayer->posY < currentMap -> height) 
+        if(walkingToX == BACKGROUND || walkingToX == WALL_DOWN) 
             currentPlayer->posX += d*currentPlayer->dirX * currentPlayer->moveSpeed;
-    if(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed >= 0 && currentPlayer->posY + currentPlayer->dirY * currentPlayer->moveSpeed < mapHeight && currentPlayer->posX >= 0 && currentPlayer->posX < mapHeight) 
-        if(currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] == BACKGROUND || currentMap -> map[int(currentPlayer->posX)][int(currentPlayer->posY + d*currentPlayer->dirY * currentPlayer->moveSpeed)] == WALL_DOWN) 
+    if(nextY >= 0 && nextY < currentMap -> height && currentPlayer->posX >= 0 && currentPlayer->posX < currentMap -> width) 
+        if(walkingToY == BACKGROUND || walkingToY == WALL_DOWN) 
             currentPlayer->posY += d*currentPlayer->dirY * currentPlayer->moveSpeed;
 }
 void Game::Turn(Directions dir) {
@@ -163,29 +172,14 @@ void Game::UpdateScreen(const std::vector<int> & col, int x) {
     for(int i = 0; i <= screenHeight; i++) {
         if(screen[x][i] != col[i]) {
             screen[x][i] = col[i];
-            const char* c;
-            bool bold = false;
+            const char* c = " ";
             switch(col[i]) {
-                case BACKGROUND: color = BACKGROUND; c = " "; break;
-                case WALL: color = WALL; c = " "; break;
-                case 2: color = 2; c = " "; break;
-                case 3: color = 3; c = " "; break;
-                case 4: color = 4; c = " "; break;
-                case 5: color = WALL; c = " "; break;
-                case WALL_DOWN: color = BACKGROUND; c = " "; break;
-                case 10: color = BACKGROUND; c = "\\"; bold = true; break;
-                case 11: color = WALL; c = "\\"; bold = true; break;
-                case 12: color = 2; c = "\\"; bold = true; break;
-                case 13: color = 3; c = "\\"; bold = true; break;
-                case 14: color = 4; c = "\\"; bold = true; break;
-                case 15: color = WALL; c = "\\"; bold = true; break;
-                case 16: color = BACKGROUND; c = "\\"; bold = true; break;
+                case 6: color = 0; break;
+                default: color = col[i]; break;
             }
-            if(bold) attron(A_BOLD);
             attron(COLOR_PAIR(color));
             mvaddstr(i, x, c);
             attroff(COLOR_PAIR(color));  
-            if(bold) attroff(A_BOLD);
         }
     }
 }
@@ -298,12 +292,15 @@ void Game::RayCast() {
 
         //choose wall color
         int color = currentMap -> map[mapX][mapY];
+        
+        /*
         //give x and y sides different shade
         int bold = 0;
         if(side == 1) {bold = 10;}
+        */
 
         //draw vertical line
-        std::vector<int> col = PrepareNewCol(drawStart, drawEnd, color+bold);
+        std::vector<int> col = PrepareNewCol(drawStart, drawEnd, color);
         UpdateScreen(col,x);
     }
 }
@@ -318,30 +315,15 @@ void Game::PrintScreen() {
     //prints the whole screen
     for(int i = 0; i < screenWidth; i++) {
         for(int j = 0; j < screenHeight; j++) {
-            const char* c;
+            const char* c = " ";
             int color;
-            bool bold = false;
             switch(screen[i][j]) {
-                case BACKGROUND: color = BACKGROUND; c = " "; break;
-                case 1: color = 1; c = " "; break;
-                case 2: color = 2; c = " "; break;
-                case 3: color = 3; c = " "; break;
-                case 4: color = 4; c = " "; break;
-                case 5: color = 1; c = " "; break;
-                case WALL_DOWN: color = BACKGROUND; c = " "; break;
-                case 10: color = BACKGROUND; c = "\\"; bold = true; break;
-                case 11: color = WALL; c = "\\"; bold = true; break;
-                case 12: color = 2; c = "\\"; bold = true; break;
-                case 13: color = 3; c = "\\"; bold = true; break;
-                case 14: color = 4; c = "\\"; bold = true; break;
-                case 15: color = WALL; c = "\\"; bold = true; break;
-                case 16: color = BACKGROUND; c = "\\"; bold = true; break;
+                case 6: color = 0; break;
+                default: color = screen[i][j]; break;
             }
-            if(bold) attron(A_BOLD);
             attron(COLOR_PAIR(color));
             mvaddstr(j, i, c);
             attroff(COLOR_PAIR(color));  
-            if(bold) attroff(A_BOLD);
         }
     }
 }
@@ -392,8 +374,3 @@ void Game::Render() {
     GameMechanics();
     refresh();
 }
-/*
-    TODO:
-        - Add buttons that activate traps, open walls, create walls
-        - Add restart button
-*/
